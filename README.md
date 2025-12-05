@@ -24,7 +24,10 @@ LCS_Transformers/
 │       ├── example2_multihead.py     # Multi-Head Attention
 │       ├── example3_architecture.py  # Architecture complète
 │       ├── example4_translation.py   # Traduction seq2seq
-│       └── example5_variants.py      # Variantes modernes
+│       ├── example5_variants.py      # Variantes modernes
+│       ├── example6_illustrated_attention.py  # The Illustrated Transformer
+│       ├── example7_annotated_transformer.py  # The Annotated Transformer
+│       └── example8_advanced_concepts.py      # Concepts avancés (polygones, etc.)
 │
 ├── tests/                      # Tests unitaires
 │   └── test_transformers.py
@@ -92,6 +95,41 @@ Explorer les variantes du Transformer :
 - Mécanismes d'attention efficaces
 - Innovations architecturales modernes
 
+### Exemple 6: The Illustrated Transformer 🆕
+```bash
+python -m src.examples.example6_illustrated_attention
+```
+Inspiré de [The Illustrated Transformer](https://jalammar.github.io/illustrated-transformer/) :
+- Analogie Query-Key-Value (bibliothèque)
+- Visualisation de l'attention sur des phrases réelles
+- Patterns d'encodage positionnel
+- Spécialisation des têtes d'attention
+
+### Exemple 7: The Annotated Transformer 🆕
+```bash
+python -m src.examples.example7_annotated_transformer
+```
+Inspiré de [The Annotated Transformer](https://nlp.seas.harvard.edu/2018/04/03/attention.html) :
+- Implémentation détaillée avec équations
+- Label smoothing et ses effets
+- Noam learning rate scheduler
+- Classification de formes géométriques (12 types de polygones!)
+
+### Exemple 8: Concepts Avancés (Fleuret) 🆕
+```bash
+python -m src.examples.example8_advanced_concepts
+```
+Inspiré des [slides de François Fleuret](https://fleuret.org/public/EN_20220809-Transformers/transformers-slides.pdf) :
+- Attention comme dictionnaire soft
+- Analyse de complexité O(n²)
+- Biais inductifs des Transformers
+- **Modélisation de séquences de polygones** :
+  - Triangles (équilatéral, isocèle, scalène)
+  - Quadrilatères (carré, rectangle, parallélogramme, losange, trapèze)
+  - Polygones réguliers (pentagone, hexagone, heptagone, octogone)
+  - Étoiles à 5 et 6 branches
+  - Polygones irréguliers
+
 ## 🧪 Tests
 
 ```bash
@@ -126,12 +164,14 @@ PE(pos, 2i+1) = cos(pos / 10000^(2i/d_model))
 FFN(x) = max(0, xW_1 + b_1)W_2 + b_2
 ```
 
-## 📝 Référence
+## 📝 Références
 
 - Turner, R. E. (2024). "An Introduction to Transformers"
 - Vaswani, A., et al. (2017). "Attention Is All You Need"
+- Alammar, J. (2018). "[The Illustrated Transformer](https://jalammar.github.io/illustrated-transformer/)"
+- Rush, A. (2018). "[The Annotated Transformer](https://nlp.seas.harvard.edu/2018/04/03/attention.html)"
+- Fleuret, F. (2022). "[Transformers Slides](https://fleuret.org/public/EN_20220809-Transformers/transformers-slides.pdf)"
 
 ## 📄 Licence
 
 GNU Affero General Public License v3.0
-
