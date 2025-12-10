@@ -382,9 +382,9 @@ def demo_training():
     plt.title('Training Progress')
     plt.legend()
     plt.grid(True, alpha=0.3)
-    plt.savefig('/tmp/training_progress.png', dpi=150)
+    plt.savefig('src/tmp/training_progress.png', dpi=150)
     plt.close()
-    print("\nTraining progress saved to /tmp/training_progress.png")
+    print("\nTraining progress saved to src/tmp/training_progress.png")
     
     # Test translation
     print("\nTest Translations:")

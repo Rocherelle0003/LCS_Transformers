@@ -335,10 +335,10 @@ In trained models, researchers have found heads that specialize in:
     plt.suptitle('Synthetic Examples: Types of Attention Patterns Heads Can Learn', 
                  fontsize=13, y=1.02)
     plt.tight_layout()
-    plt.savefig('/tmp/head_patterns.png', dpi=150, bbox_inches='tight')
+    plt.savefig('src/tmp/head_patterns.png', dpi=150, bbox_inches='tight')
     plt.close()
     
-    print("\nVisualization of synthetic head patterns saved to /tmp/head_patterns.png")
+    print("\nVisualization of synthetic head patterns saved to src/tmp/head_patterns.png")
 
 
 def main():
@@ -350,7 +350,7 @@ def main():
     # Run demonstrations
     explain_multihead_intuition()
     attention_weights = demonstrate_head_specialization()
-    visualize_multiple_heads(attention_weights, "/tmp/multihead_attention.png")
+    visualize_multiple_heads(attention_weights, "src/tmp/multihead_attention.png")
     demonstrate_projection_matrices()
     demonstrate_computational_efficiency()
     demonstrate_head_analysis()

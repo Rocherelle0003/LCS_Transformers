@@ -432,10 +432,10 @@ Key Properties:
     axes[1].grid(True, alpha=0.3)
     
     plt.tight_layout()
-    plt.savefig('/tmp/positional_encoding.png', dpi=150, bbox_inches='tight')
+    plt.savefig('src/tmp/positional_encoding.png', dpi=150, bbox_inches='tight')
     plt.close()
     
-    print("\nVisualization saved to /tmp/positional_encoding.png")
+    print("\nVisualization saved to src/tmp/positional_encoding.png")
     print("""
 OBSERVATIONS:
 - Even dimensions (0, 4, 16, ...): Sine waves with decreasing frequency

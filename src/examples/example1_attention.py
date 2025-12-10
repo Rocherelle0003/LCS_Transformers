@@ -287,7 +287,7 @@ def main():
     demonstrate_self_vs_cross_attention()
     
     # Generate visualization
-    visualize_attention_patterns("/tmp/attention_patterns.png")
+    visualize_attention_patterns("src/tmp/attention_patterns.png")
     
     print("\n" + "=" * 60)
     print("Key Takeaways:")

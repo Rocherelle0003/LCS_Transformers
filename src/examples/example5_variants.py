@@ -547,10 +547,10 @@ def visualize_attention_patterns():
     
     plt.suptitle('Attention Patterns in Different Transformer Variants', fontsize=14, y=1.02)
     plt.tight_layout()
-    plt.savefig('/tmp/attention_variants.png', dpi=150, bbox_inches='tight')
+    plt.savefig('src/tmp/attention_variants.png', dpi=150, bbox_inches='tight')
     plt.close()
     
-    print("Attention patterns saved to /tmp/attention_variants.png")
+    print("Attention patterns saved to src/tmp/attention_variants.png")
 
 
 def create_local_mask(seq_len: int, window_size: int) -> torch.Tensor:

@@ -24,7 +24,10 @@ LCS_Transformers/
 │       ├── example2_multihead.py     # Multi-Head Attention
 │       ├── example3_architecture.py  # Architecture complète
 │       ├── example4_translation.py   # Traduction seq2seq
-│       └── example5_variants.py      # Variantes modernes
+│       ├── example5_variants.py      # Variantes modernes
+│       ├── example6_illustrated_attention.py  # The Illustrated Transformer
+│       ├── example7_annotated_transformer.py  # The Annotated Transformer
+│       └── example8_advanced_concepts.py      # Concepts avancés (Fleuret)
 │
 ├── tests/                      # Tests unitaires
 │   └── test_transformers.py
@@ -92,6 +95,39 @@ Explorer les variantes du Transformer :
 - Mécanismes d'attention efficaces
 - Innovations architecturales modernes
 
+### Exemple 6: The Illustrated Transformer (Visual Deep Dive)
+```bash
+python -m src.examples.example6_illustrated_attention
+```
+Visualisations inspirées de Jay Alammar :
+- Analogie Query-Key-Value (bibliothèque)
+- Self-attention sur des phrases réelles
+- Patterns d'encodage positionnel (ondes sinusoïdales)
+- Pipeline complet de l'encoder
+- Spécialisation des têtes d'attention
+
+### Exemple 7: The Annotated Transformer (Détails Mathématiques)
+```bash
+python -m src.examples.example7_annotated_transformer
+```
+Implémentation détaillée style Harvard NLP :
+- Équations mathématiques complètes
+- Noam Learning Rate Scheduler
+- Label Smoothing avec visualisations
+- Copy Task (test de sanité)
+- Classification de 12 formes géométriques (triangles, parallélogrammes, losanges, trapèzes, pentagones, hexagones, etc.)
+
+### Exemple 8: Concepts Avancés (François Fleuret)
+```bash
+python -m src.examples.example8_advanced_concepts
+```
+Concepts théoriques approfondis :
+- Attention comme dictionnaire soft (recherche différentiable)
+- Analyse de complexité O(n²) avec visualisations
+- Biais inductifs des Transformers
+- Modélisation de séquences de polygones (16 types : étoiles, polygones réguliers/irréguliers)
+- Patterns d'attention hypothétiques pour données géométriques
+
 ## 🧪 Tests
 
 ```bash
@@ -130,6 +166,9 @@ FFN(x) = max(0, xW_1 + b_1)W_2 + b_2
 
 - Turner, R. E. (2024). "An Introduction to Transformers"
 - Vaswani, A., et al. (2017). "Attention Is All You Need"
+- Alammar, J. (2018). "The Illustrated Transformer" - https://jalammar.github.io/illustrated-transformer/
+- Rush, A. et al. (2018). "The Annotated Transformer" - https://nlp.seas.harvard.edu/2018/04/03/attention.html
+- Fleuret, F. (2022). "Transformers" - https://fleuret.org/public/EN_20220809-Transformers/
 
 ## 📄 Licence
 
