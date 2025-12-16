@@ -382,9 +382,14 @@ def demo_training():
     plt.title('Training Progress')
     plt.legend()
     plt.grid(True, alpha=0.3)
-    plt.savefig('src/tmp/training_progress.png', dpi=150)
+    
+    # Créer le dossier s'il n'existe pas
+    output_dir = Path(__file__).parent.parent / 'tmp'
+    output_dir.mkdir(exist_ok=True)
+    
+    plt.savefig(output_dir / 'training_progress.png', dpi=150)
     plt.close()
-    print("\nTraining progress saved to src/tmp/training_progress.png")
+    print(f"\nTraining progress saved to {output_dir / 'training_progress.png'}")
     
     # Test translation
     print("\nTest Translations:")
