@@ -14,7 +14,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from src.examples.example9_toy_seq2seq import (
+from src.examples.toy_seq2seq import (
     SignalDataset,
     SimpleSignalTransformer,
     collate_fn,
@@ -33,11 +33,11 @@ class TestSignalDataset:
     
     def test_dataset_shapes(self):
         """Test les formes des tenseurs."""
-        dataset = SignalDataset(num_samples=5, seq_len=64, seed=42)
+        dataset = SignalDataset(num_samples=5, seq_len=100, seed=42)
         input_signal, output_signal, peak_info = dataset[0]
         
-        assert input_signal.shape == (64,)
-        assert output_signal.shape == (64,)
+        assert input_signal.shape == (100,)
+        assert output_signal.shape == (100,)
         assert isinstance(peak_info, dict)
     
     def test_dataset_peak_info(self):
@@ -106,19 +106,19 @@ class TestSimpleSignalTransformer:
     
     def test_model_creation(self):
         """Test que le modèle se crée correctement."""
-        model = SimpleSignalTransformer(seq_len=64)
+        model = SimpleSignalTransformer(seq_len=100, patch_size=5)
         assert model is not None
     
     def test_model_forward_shape(self):
         """Test la forme de sortie du modèle."""
-        model = SimpleSignalTransformer(seq_len=64, d_model=32, num_heads=4)
+        model = SimpleSignalTransformer(seq_len=100, d_model=32, num_heads=4, patch_size=5)
         
         batch_size = 4
-        x = torch.randn(batch_size, 64)
+        x = torch.randn(batch_size, 100)
         
         output = model(x)
         
-        assert output.shape == (batch_size, 64)
+        assert output.shape == (batch_size, 100)
     
     def test_model_forward_single_sample(self):
         """Test avec un seul échantillon."""
@@ -131,14 +131,14 @@ class TestSimpleSignalTransformer:
     
     def test_model_parameters_count(self):
         """Test que le modèle a des paramètres."""
-        model = SimpleSignalTransformer(seq_len=64, d_model=64)
+        model = SimpleSignalTransformer(seq_len=100, d_model=64, patch_size=5)
         
         num_params = sum(p.numel() for p in model.parameters())
         assert num_params > 0
     
     def test_model_trainable(self):
         """Test que le modèle peut être entraîné (gradients)."""
-        model = SimpleSignalTransformer(seq_len=32, d_model=32, num_heads=2)
+        model = SimpleSignalTransformer(seq_len=32, d_model=32, num_heads=2, patch_size=4)
         
         x = torch.randn(2, 32)
         target = torch.randn(2, 32)
@@ -154,7 +154,7 @@ class TestSimpleSignalTransformer:
     
     def test_model_eval_mode(self):
         """Test le mode évaluation."""
-        model = SimpleSignalTransformer(seq_len=32)
+        model = SimpleSignalTransformer(seq_len=32, patch_size=4)
         
         model.eval()
         assert not model.training
@@ -188,7 +188,7 @@ class TestTraining:
             dataset, batch_size=8, collate_fn=collate_fn
         )
         
-        model = SimpleSignalTransformer(seq_len=32, d_model=32, num_heads=2, num_layers=1)
+        model = SimpleSignalTransformer(seq_len=32, d_model=32, num_heads=2, num_layers=1, patch_size=4)
         optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
         criterion = torch.nn.MSELoss()
         device = torch.device('cpu')
@@ -205,7 +205,7 @@ class TestTraining:
             dataset, batch_size=8, collate_fn=collate_fn
         )
         
-        model = SimpleSignalTransformer(seq_len=32, d_model=32, num_heads=2, num_layers=1)
+        model = SimpleSignalTransformer(seq_len=32, d_model=32, num_heads=2, num_layers=1, patch_size=4)
         criterion = torch.nn.MSELoss()
         device = torch.device('cpu')
         
@@ -221,7 +221,7 @@ class TestTraining:
             dataset, batch_size=16, collate_fn=collate_fn
         )
         
-        model = SimpleSignalTransformer(seq_len=32, d_model=64, num_heads=4, num_layers=2)
+        model = SimpleSignalTransformer(seq_len=32, d_model=64, num_heads=4, num_layers=2, patch_size=4)
         optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
         criterion = torch.nn.MSELoss()
         device = torch.device('cpu')
@@ -258,7 +258,7 @@ class TestIntegration:
         
         # Model
         model = SimpleSignalTransformer(
-            seq_len=32, d_model=32, num_heads=2, num_layers=2
+            seq_len=32, d_model=32, num_heads=2, num_layers=2, patch_size=4
         )
         
         # Training
@@ -309,7 +309,7 @@ class TestIntegration:
             )
         )
         
-        model = SimpleSignalTransformer(seq_len=32, d_model=64, num_heads=4, num_layers=2)
+        model = SimpleSignalTransformer(seq_len=32, d_model=64, num_heads=4, num_layers=2, patch_size=4)
         optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
         criterion = torch.nn.MSELoss()
         device = torch.device('cpu')

@@ -1,0 +1,874 @@
+\documentclass[aspectratio=169, 11pt]{beamer}
+
+% ─────────────────────────────────────────────────────────
+% THÈME ET PACKAGES
+% ─────────────────────────────────────────────────────────
+\usetheme{Madrid}
+\usecolortheme{seahorse}
+\setbeamertemplate{navigation symbols}{}
+\setbeamertemplate{footline}[frame number]
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[french]{babel}
+\usepackage{amsmath, amssymb}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta, positioning, calc, decorations.pathreplacing, matrix}
+\usepackage{booktabs}
+\usepackage{graphicx}
+\usepackage{hyperref}
+
+% ─────────────────────────────────────────────────────────
+% STYLE CODE PYTHON
+% ─────────────────────────────────────────────────────────
+\definecolor{codebg}{RGB}{245,245,250}
+\definecolor{codegreen}{RGB}{0,128,0}
+\definecolor{codepurple}{RGB}{128,0,128}
+\definecolor{codered}{RGB}{200,30,30}
+\definecolor{accentblue}{RGB}{0,80,160}
+\definecolor{accentorange}{RGB}{230,120,0}
+
+\lstdefinestyle{python}{
+    language=Python,
+    basicstyle=\ttfamily\scriptsize,
+    backgroundcolor=\color{codebg},
+    keywordstyle=\color{accentblue}\bfseries,
+    stringstyle=\color{codered},
+    commentstyle=\color{codegreen}\itshape,
+    numberstyle=\tiny\color{gray},
+    numbers=left,
+    numbersep=5pt,
+    frame=single,
+    rulecolor=\color{gray!30},
+    breaklines=true,
+    showstringspaces=false,
+    tabsize=4,
+    morekeywords={self, torch, nn, math, None, True, False},
+    emph={ScaledDotProductAttention, MultiHeadAttention, forward, __init__},
+    emphstyle=\color{codepurple}\bfseries,
+}
+
+% ─────────────────────────────────────────────────────────
+% MÉTADONNÉES
+% ─────────────────────────────────────────────────────────
+\title[Attention \& Multi-Head]{Le Mécanisme d'Attention\\et Multi-Head Attention}
+\subtitle{De l'intuition au code --- Comprendre le cœur du Transformer}
+\author{Master 1 LCS --- Lecture et Communication Scientifique}
+\institute{D'après \emph{An Introduction to Transformers} (Turner, 2024)}
+\date{Février 2026}
+
+\begin{document}
+
+% ═══════════════════════════════════════════════════════════
+% PAGE DE TITRE
+% ═══════════════════════════════════════════════════════════
+\begin{frame}
+\titlepage
+\end{frame}
+
+% ═══════════════════════════════════════════════════════════
+% PLAN
+% ═══════════════════════════════════════════════════════════
+\begin{frame}{Plan de la présentation}
+\tableofcontents
+\end{frame}
+
+% ═══════════════════════════════════════════════════════════
+% PARTIE 1 : RAPPEL & MOTIVATION
+% ═══════════════════════════════════════════════════════════
+\section{Rappel : du signal aux patches}
+
+\begin{frame}{Rappel : ce qu'on a vu}
+\begin{columns}
+\begin{column}{0.55\textwidth}
+    \textbf{Étape précédente : le Patching}
+    \begin{itemize}
+        \item Signal de 100 points $\rightarrow$ 20 patches de 5
+        \item Chaque patch est projeté en dimension $d_{\text{model}} = 64$
+        \item On y ajoute un \emph{positional encoding}
+    \end{itemize}
+    
+    \vspace{0.5em}
+    \textbf{Résultat :} une matrice $X \in \mathbb{R}^{20 \times 64}$
+    
+    \vspace{0.5em}
+    \alert{Question :} Comment chaque patch ``sait-il'' ce que contiennent les autres ?
+\end{column}
+\begin{column}{0.42\textwidth}
+    \begin{tikzpicture}[scale=0.65, every node/.style={font=\footnotesize}]
+        % Signal
+        \draw[thick, blue] (0,0) -- (1,0) -- (1.5,2) -- (2,0) -- (3,0) -- (3.2,1.5) -- (3.5,1.5) -- (3.7,0) -- (5,0);
+        \node[above, blue] at (2.5, -0.6) {Signal d'entrée};
+        
+        % Flèche
+        \draw[->, thick] (2.5,-1) -- (2.5,-1.8);
+        
+        % Patches
+        \foreach \i/\c in {0/red!60, 1/orange!60, 2/green!60, 3/blue!60, 4/purple!60} {
+            \fill[\c, rounded corners=1pt] (\i*1, -2.2) rectangle (\i*1+0.85, -2.8);
+        }
+        \node at (2.5, -3.2) {5 patches (sur 20)};
+        
+        % Flèche
+        \draw[->, thick] (2.5,-3.6) -- (2.5,-4.4);
+        
+        % Matrice
+        \draw[thick] (0.5,-4.6) rectangle (4.5,-5.8);
+        \node at (2.5, -5.2) {$X \in \mathbb{R}^{20 \times 64}$};
+        
+        % Flèche vers attention
+        \draw[->, thick, red!70!black] (2.5,-6.1) -- (2.5,-6.7);
+        \node[red!70!black, font=\bfseries] at (2.5,-7.1) {ATTENTION ?};
+    \end{tikzpicture}
+\end{column}
+\end{columns}
+\end{frame}
+
+\begin{frame}{Pourquoi l'attention ?}
+\begin{block}{Le problème}
+Après le patching, chaque patch est traité \textbf{indépendamment}. \\
+Or pour moyenner les pics par type, un patch-triangle doit ``savoir'' la hauteur des \emph{autres} patches-triangles.
+\end{block}
+
+\vspace{0.5em}
+
+\begin{alertblock}{La solution : l'attention}
+Un mécanisme qui permet à chaque position de \textbf{consulter toutes les autres} positions et d'en extraire l'information pertinente.
+\end{alertblock}
+
+\vspace{0.5em}
+
+\begin{exampleblock}{Analogie (Alammar, 2018)}
+\textbf{``it''} dans \emph{``The animal didn't cross the street because \textbf{it} was too tired''}  \\[0.3em]
+$\rightarrow$ L'attention permet au modèle d'associer ``it'' à ``animal'' plutôt qu'à ``street''.
+\end{exampleblock}
+\end{frame}
+
+% ═══════════════════════════════════════════════════════════
+% PARTIE 2 : SCALED DOT-PRODUCT ATTENTION
+% ═══════════════════════════════════════════════════════════
+\section{Scaled Dot-Product Attention}
+
+\begin{frame}{L'intuition : Query, Key, Value}
+\begin{columns}
+\begin{column}{0.55\textwidth}
+    \textbf{Analogie de la bibliothèque} (Alammar) :
+    
+    \begin{enumerate}
+        \item \textbf{Query} (Q) : \emph{``Je cherche un livre sur X''}
+        \item \textbf{Key} (K) : \emph{L'étiquette de chaque livre}
+        \item \textbf{Value} (V) : \emph{Le contenu de chaque livre}
+    \end{enumerate}
+    
+    \vspace{0.5em}
+    
+    \textbf{Processus :}
+    \begin{itemize}
+        \item On compare la \textbf{query} avec chaque \textbf{key} $\rightarrow$ score de pertinence
+        \item On pondère chaque \textbf{value} par ce score
+        \item On fait la somme pondérée $\rightarrow$ résultat
+    \end{itemize}
+\end{column}
+\begin{column}{0.42\textwidth}
+    \begin{tikzpicture}[
+        scale=0.55,
+        every node/.style={font=\scriptsize},
+        qbox/.style={fill=red!20, rounded corners, minimum width=1.5cm, minimum height=0.6cm},
+        kbox/.style={fill=blue!20, rounded corners, minimum width=1.5cm, minimum height=0.6cm},
+        vbox/.style={fill=green!20, rounded corners, minimum width=1.5cm, minimum height=0.6cm},
+    ]
+        % Query
+        \node[qbox] (q) at (0, 4) {Query $q_1$};
+        
+        % Keys
+        \node[kbox] (k1) at (3.5, 5.5) {Key $k_1$};
+        \node[kbox] (k2) at (3.5, 4) {Key $k_2$};
+        \node[kbox] (k3) at (3.5, 2.5) {Key $k_3$};
+        
+        % Scores
+        \draw[->, thick] (q) -- (k1) node[midway, above, sloped] {0.7};
+        \draw[->, thick] (q) -- (k2) node[midway, above] {0.2};
+        \draw[->, thick] (q) -- (k3) node[midway, below, sloped] {0.1};
+        
+        % Values
+        \node[vbox] (v1) at (7, 5.5) {Val $v_1$};
+        \node[vbox] (v2) at (7, 4) {Val $v_2$};
+        \node[vbox] (v3) at (7, 2.5) {Val $v_3$};
+        
+        \draw[->, thick, green!50!black] (k1) -- (v1);
+        \draw[->, thick, green!50!black] (k2) -- (v2);
+        \draw[->, thick, green!50!black] (k3) -- (v3);
+        
+        % Résultat
+        \node[fill=yellow!30, rounded corners, minimum width=2cm, minimum height=0.6cm] (out) at (7, 0.8) {$0.7v_1 + 0.2v_2 + 0.1v_3$};
+        
+        \draw[->, thick, orange] (v1) -- (out);
+        \draw[->, thick, orange] (v2) -- (out);
+        \draw[->, thick, orange] (v3) -- (out);
+    \end{tikzpicture}
+\end{column}
+\end{columns}
+\end{frame}
+
+\begin{frame}{La formule mathématique}
+\begin{block}{Scaled Dot-Product Attention (Vaswani et al., 2017)}
+\vspace{-0.5em}
+\[
+\boxed{\text{Attention}(Q, K, V) = \text{softmax}\!\left(\frac{QK^\top}{\sqrt{d_k}}\right) V}
+\]
+\end{block}
+
+\vspace{0.3em}
+
+\textbf{Décomposition étape par étape :}
+\begin{enumerate}
+    \item \textbf{Scores} : $S = QK^\top$ \hfill produit scalaire entre chaque query et chaque key
+    \item \textbf{Scaling} : $S' = S / \sqrt{d_k}$ \hfill empêche les gradients de s'effondrer
+    \item \textbf{Softmax} : $W = \text{softmax}(S')$ \hfill normalise en probabilités (somme = 1)
+    \item \textbf{Pondération} : $\text{output} = W \cdot V$ \hfill somme pondérée des values
+\end{enumerate}
+
+\vspace{0.5em}
+
+\begin{columns}
+\begin{column}{0.48\textwidth}
+\textbf{Dimensions :}\\
+$Q \in \mathbb{R}^{n \times d_k}$, \;
+$K \in \mathbb{R}^{m \times d_k}$, \;
+$V \in \mathbb{R}^{m \times d_v}$\\
+$\text{output} \in \mathbb{R}^{n \times d_v}$
+\end{column}
+\begin{column}{0.48\textwidth}
+\textbf{Pourquoi $\sqrt{d_k}$ ?} (Turner, §3.2)\\
+Si $q, k \sim \mathcal{N}(0,1)$, alors $q \cdot k$ a variance $d_k$.\\
+$\rightarrow$ Diviser par $\sqrt{d_k}$ ramène la variance à 1.
+\end{column}
+\end{columns}
+\end{frame}
+
+\begin{frame}[fragile]{Le code : \texttt{ScaledDotProductAttention}}
+\begin{lstlisting}[style=python, title={\texttt{src/transformers/attention.py} --- Lignes 56--97}]
+class ScaledDotProductAttention(nn.Module):
+    def __init__(self, dropout: float = 0.0):
+        super().__init__()
+        self.dropout = nn.Dropout(p=dropout)
+
+    def forward(self, query, key, value, mask=None):
+        d_k = query.size(-1)  # dimension des keys
+
+        # Etape 1+2: scores = Q @ K^T / sqrt(d_k)
+        scores = torch.matmul(query, key.transpose(-2, -1)) \
+                 / math.sqrt(d_k)
+
+        # Masquage optionnel (padding ou causal)
+        if mask is not None:
+            scores = scores.masked_fill(mask, float('-inf'))
+
+        # Etape 3: softmax -> poids d'attention
+        attention_weights = F.softmax(scores, dim=-1)
+        attention_weights = self.dropout(attention_weights)
+
+        # Etape 4: somme ponderee des values
+        output = torch.matmul(attention_weights, value)
+        return output, attention_weights
+\end{lstlisting}
+\end{frame}
+
+\begin{frame}{Visualisation : que fait l'attention ?}
+\begin{columns}
+\begin{column}{0.5\textwidth}
+    \begin{tikzpicture}[scale=0.5, every node/.style={font=\tiny}]
+        % Matrice Q*K^T
+        \def\data{
+            {0.9, 0.1, 0.0, 0.0, 0.0},
+            {0.1, 0.4, 0.1, 0.3, 0.1},
+            {0.0, 0.1, 0.8, 0.0, 0.1},
+            {0.0, 0.3, 0.0, 0.4, 0.3},
+            {0.0, 0.1, 0.1, 0.3, 0.5}
+        }
+        \foreach \row [count=\y] in \data {
+            \foreach \val [count=\x] in \row {
+                \pgfmathsetmacro{\intensity}{\val*100}
+                \fill[blue!\intensity!white] (\x-1, 5-\y) rectangle (\x, 5-\y+1);
+                \node at (\x-0.5, 5-\y+0.5) {\pgfmathprintnumber[fixed, precision=1]{\val}};
+            }
+        }
+        \draw[thick] (0,0) rectangle (5,5);
+        
+        % Labels
+        \node[rotate=90] at (-0.5, 2.5) {Query (patch)};
+        \node at (2.5, -0.4) {Key (patch)};
+        \node[font=\small\bfseries] at (2.5, 5.6) {Poids d'attention (softmax)};
+        
+        % Patch labels
+        \foreach \i in {1,...,5} {
+            \node at (\i-0.5, -0.8) {$p_\i$};
+            \node at (-1, 5.5-\i) {$p_\i$};
+        }
+    \end{tikzpicture}
+\end{column}
+\begin{column}{0.48\textwidth}
+    \textbf{Lecture de la matrice :}
+    
+    \begin{itemize}
+        \item Chaque \textbf{ligne} = comment un patch répartit son attention
+        \item Ligne 1 : le patch 1 s'attend surtout à \textbf{lui-même} (0.9)
+        \item Ligne 2 : le patch 2 regarde les patches 2 \emph{et} 4 (0.4 + 0.3)
+    \end{itemize}
+    
+    \vspace{0.5em}
+    \textbf{Pour notre tâche toy\_seq2seq :}
+    \begin{itemize}
+        \item Les patches-triangles devraient s'``écouter'' entre eux
+        \item Les patches-carrés de même
+        \item $\rightarrow$ Pour calculer la moyenne par type !
+    \end{itemize}
+\end{column}
+\end{columns}
+\end{frame}
+
+\begin{frame}{Pourquoi $\sqrt{d_k}$ est crucial --- Démonstration}
+\begin{columns}
+\begin{column}{0.55\textwidth}
+    \textbf{Sans scaling} ($d_k = 64$) :
+    \begin{itemize}
+        \item $q \cdot k = \sum_{i=1}^{64} q_i k_i$
+        \item Si $q_i, k_i \sim \mathcal{N}(0,1)$ : variance = $d_k = 64$
+        \item Scores $\approx \pm 16$ (grand en magnitude)
+        \item Softmax $\rightarrow$ quasi one-hot : \textbf{gradients $\approx$ 0}
+    \end{itemize}
+    
+    \vspace{0.5em}
+    \textbf{Avec scaling} :
+    \begin{itemize}
+        \item $\frac{q \cdot k}{\sqrt{64}} = \frac{q \cdot k}{8}$
+        \item Variance ramenée à $\approx 1$
+        \item Scores $\approx \pm 2$ (raisonnable)
+        \item Softmax $\rightarrow$ distribution douce : \textbf{gradients sains}
+    \end{itemize}
+\end{column}
+\begin{column}{0.42\textwidth}
+    \begin{tikzpicture}[scale=0.6, every node/.style={font=\scriptsize}]
+        % Axe
+        \draw[->] (0,0) -- (6,0) node[right] {$x$};
+        \draw[->] (0,0) -- (0,4.5) node[above] {softmax};
+        
+        % Softmax douce (avec scaling)
+        \draw[thick, blue, smooth] plot coordinates {(0.5,0.3) (1.5,0.5) (2.5,1.2) (3,2.5) (3.5,3.5) (4,3.8) (4.5,3.9) (5.5,4)};
+        \node[blue, right] at (5.2, 3.5) {avec $\sqrt{d_k}$};
+        
+        % Softmax dure (sans scaling)
+        \draw[thick, red, smooth] plot coordinates {(0.5,0) (1.5,0) (2,0) (2.5,0.05) (2.8,0.5) (3,3.5) (3.2,3.95) (3.5,4) (5.5,4)};
+        \node[red, right] at (5.2, 4.3) {sans scaling};
+        
+        % Annotation
+        \draw[<->, thick, orange] (2.8, 1.5) -- (3.2, 1.5);
+        \node[orange, below] at (3, 1.3) {gradient};
+    \end{tikzpicture}
+    
+    \vspace{0.3em}
+    \centering
+    \small\textcolor{gray}{Sans scaling : la softmax sature,\\les gradients disparaissent.}
+\end{column}
+\end{columns}
+\end{frame}
+
+% ═══════════════════════════════════════════════════════════
+% PARTIE 3 : MULTI-HEAD ATTENTION
+% ═══════════════════════════════════════════════════════════
+\section{Multi-Head Attention}
+
+\begin{frame}{Pourquoi plusieurs têtes ?}
+\begin{block}{Limitation d'une seule tête}
+Avec une seule attention, le résultat est une \textbf{moyenne pondérée unique}. \\
+Le modèle ne peut capturer qu'\textbf{un seul type de relation} à la fois.
+\end{block}
+
+\vspace{0.5em}
+
+\begin{exampleblock}{Multi-Head = plusieurs ``points de vue'' simultanés}
+Chaque tête apprend des \textbf{projections différentes} $(W^Q_i, W^K_i, W^V_i)$ \\
+$\rightarrow$ chacune se spécialise sur un aspect différent :
+\end{exampleblock}
+
+\vspace{0.3em}
+
+\begin{columns}
+\begin{column}{0.45\textwidth}
+    \textbf{Tête 1 :} Relations de position\\
+    \emph{``Qui est mon voisin ?''}
+    
+    \vspace{0.3em}
+    \textbf{Tête 2 :} Similarité de forme\\
+    \emph{``Qui a la même forme que moi ?''}
+\end{column}
+\begin{column}{0.45\textwidth}
+    \textbf{Tête 3 :} Comparaison de hauteur\\
+    \emph{``Qui a une hauteur similaire ?''}
+    
+    \vspace{0.3em}
+    \textbf{Tête 4 :} Vision globale\\
+    \emph{``Quel est le contexte général ?''}
+\end{column}
+\end{columns}
+
+\vspace{0.5em}
+
+\centering
+\small \textcolor{gray}{(Alammar : ``it'' $\rightarrow$ tête 1 regarde ``animal'', tête 2 regarde ``tired'')}
+\end{frame}
+
+\begin{frame}{La formule Multi-Head}
+\begin{block}{Multi-Head Attention (Vaswani et al., 2017)}
+\vspace{-0.5em}
+\[
+\boxed{\text{MultiHead}(Q, K, V) = \text{Concat}(\text{head}_1, \dots, \text{head}_h) \, W^O}
+\]
+\[
+\text{où} \quad \text{head}_i = \text{Attention}(Q W_i^Q, \; K W_i^K, \; V W_i^V)
+\]
+\end{block}
+
+\vspace{0.3em}
+
+\textbf{Dimensions avec $h$ têtes} ($h = 4$ dans notre code, $h = 8$ dans le papier) :
+
+\vspace{0.3em}
+
+\begin{center}
+\begin{tabular}{lll}
+\toprule
+\textbf{Matrice} & \textbf{Dimension} & \textbf{Rôle} \\
+\midrule
+$W_i^Q, W_i^K, W_i^V$ & $\mathbb{R}^{d_{\text{model}} \times d_k}$ & Projections par tête \\
+$d_k = d_{\text{model}} / h$ & $64 / 4 = 16$ & Dimension par tête \\
+$W^O$ & $\mathbb{R}^{h \cdot d_k \times d_{\text{model}}}$ & Recombinaison \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\vspace{0.3em}
+\textbf{Coût :} identique à une seule attention en $d_{\text{model}}$ ! \\
+$h$ têtes de dimension $d_k$ = 1 tête de dimension $d_{\text{model}}$ (même nombre de multiplications).
+\end{frame}
+
+\begin{frame}{Pipeline visuel : Multi-Head Attention}
+\centering
+\begin{tikzpicture}[
+    scale=0.55, 
+    every node/.style={font=\scriptsize},
+    box/.style={draw, rounded corners, minimum width=1.8cm, minimum height=0.7cm, thick},
+    arrow/.style={->, thick, >=Stealth},
+]
+    % Input
+    \node[box, fill=gray!20] (input) at (0, 0) {$X \in \mathbb{R}^{20 \times 64}$};
+    
+    % Projections
+    \node[box, fill=red!20] (wq) at (-4, -2) {$W^Q$};
+    \node[box, fill=blue!20] (wk) at (0, -2) {$W^K$};
+    \node[box, fill=green!20] (wv) at (4, -2) {$W^V$};
+    
+    \draw[arrow] (input) -- (wq);
+    \draw[arrow] (input) -- (wk);
+    \draw[arrow] (input) -- (wv);
+    
+    % Split
+    \node[font=\scriptsize\itshape, gray] at (0, -3.2) {split en $h=4$ têtes};
+    
+    % Heads
+    \foreach \i/\col in {1/red!40, 2/orange!40, 3/green!40, 4/blue!40} {
+        \pgfmathsetmacro{\xpos}{-4.5 + (\i-1)*3}
+        \node[box, fill=\col] (head\i) at (\xpos, -4.5) {Tête \i};
+        \node[font=\tiny, below=0.1cm of head\i] {$\mathbb{R}^{20 \times 16}$};
+    }
+    
+    \draw[arrow] (wq) -- (head1);
+    \draw[arrow] (wq) -- (head2);
+    \draw[arrow] (wk) -- (head3);
+    \draw[arrow] (wv) -- (head4);
+    
+    % Attention par tête
+    \foreach \i/\col in {1/red!40, 2/orange!40, 3/green!40, 4/blue!40} {
+        \pgfmathsetmacro{\xpos}{-4.5 + (\i-1)*3}
+        \node[box, fill=\col!70] (attn\i) at (\xpos, -6.5) {\tiny Attention};
+    }
+    
+    \foreach \i in {1,...,4} {
+        \draw[arrow] (head\i) -- (attn\i);
+    }
+    
+    % Concat
+    \node[box, fill=yellow!30, minimum width=5cm] (concat) at (0, -8.2) {Concat $\rightarrow$ $\mathbb{R}^{20 \times 64}$};
+    
+    \foreach \i in {1,...,4} {
+        \draw[arrow] (attn\i) -- (concat);
+    }
+    
+    % W^O
+    \node[box, fill=purple!20] (wo) at (0, -9.7) {$W^O$ : projection finale};
+    \draw[arrow] (concat) -- (wo);
+    
+    % Output
+    \node[box, fill=gray!20] (output) at (0, -11.2) {Sortie $\in \mathbb{R}^{20 \times 64}$};
+    \draw[arrow] (wo) -- (output);
+\end{tikzpicture}
+\end{frame}
+
+\begin{frame}[fragile]{Le code : \texttt{MultiHeadAttention} (1/2) --- Init}
+\begin{lstlisting}[style=python, title={\texttt{src/transformers/attention.py} --- Projections Q, K, V}]
+class MultiHeadAttention(nn.Module):
+    def __init__(self, d_model: int, num_heads: int, dropout=0.0):
+        super().__init__()
+        assert d_model % num_heads == 0  # divisibilite obligatoire
+
+        self.d_model = d_model        # 64
+        self.num_heads = num_heads     # 4
+        self.d_k = d_model // num_heads  # 64/4 = 16 par tete
+
+        # 4 matrices de projection lineaire
+        self.W_q = nn.Linear(d_model, d_model)  # 64 -> 64
+        self.W_k = nn.Linear(d_model, d_model)  # 64 -> 64
+        self.W_v = nn.Linear(d_model, d_model)  # 64 -> 64
+        self.W_o = nn.Linear(d_model, d_model)  # 64 -> 64
+
+        # Le mecanisme d'attention de base
+        self.attention = ScaledDotProductAttention(dropout)
+\end{lstlisting}
+
+\vspace{0.3em}
+\textbf{Astuce d'implémentation :} On utilise \texttt{nn.Linear(64, 64)} unique plutôt que 4 $\times$ \texttt{nn.Linear(64, 16)}. Le split en têtes se fait par \texttt{reshape} !
+\end{frame}
+
+\begin{frame}[fragile]{Le code : \texttt{MultiHeadAttention} (2/2) --- Forward}
+\begin{lstlisting}[style=python, title={\texttt{src/transformers/attention.py} --- Forward pass}]
+def forward(self, query, key, value, mask=None):
+    batch_size = query.size(0)
+
+    # 1. Projections lineaires
+    Q = self.W_q(query)  # (batch, 20, 64)
+    K = self.W_k(key)
+    V = self.W_v(value)
+
+    # 2. Reshape: split d_model en num_heads x d_k
+    #    (batch, 20, 64) -> (batch, 4, 20, 16)
+    Q = Q.view(batch_size, -1, self.num_heads, self.d_k) \
+         .transpose(1, 2)
+    K = K.view(batch_size, -1, self.num_heads, self.d_k) \
+         .transpose(1, 2)
+    V = V.view(batch_size, -1, self.num_heads, self.d_k) \
+         .transpose(1, 2)
+
+    # 3. Attention en parallele sur les 4 tetes
+    attn_output, weights = self.attention(Q, K, V, mask)
+
+    # 4. Concat: (batch, 4, 20, 16) -> (batch, 20, 64)
+    attn_output = attn_output.transpose(1, 2).contiguous() \
+                             .view(batch_size, -1, self.d_model)
+
+    # 5. Projection finale W^O
+    return self.W_o(attn_output), weights
+\end{lstlisting}
+\end{frame}
+
+% ═══════════════════════════════════════════════════════════
+% PARTIE 4 : LE RESHAPE EXPLIQUÉ
+% ═══════════════════════════════════════════════════════════
+\section{L'astuce du reshape}
+
+\begin{frame}{Le reshape décortiqué}
+\begin{center}
+\begin{tikzpicture}[
+    scale=0.6, 
+    every node/.style={font=\scriptsize},
+    mat/.style={draw, thick, minimum width=0.6cm, minimum height=0.4cm},
+]
+    % Étape 1: Après projection linéaire
+    \node[font=\small\bfseries] at (0, 5) {Après $W^Q$ :};
+    \draw[thick, fill=red!10] (-3, 3.5) rectangle (3, 4.5);
+    \node at (0, 4) {\texttt{(batch, 20, 64)}};
+    \node[gray] at (0, 3.2) {20 patches, chacun en 64 dims};
+    
+    % Flèche
+    \draw[->, thick] (0, 2.8) -- (0, 2) node[midway, right] {\texttt{.view(..., 4, 16)}};
+    
+    % Étape 2: View
+    \draw[thick, fill=orange!10] (-3, 0.8) rectangle (3, 1.8);
+    \node at (0, 1.3) {\texttt{(batch, 20, 4, 16)}};
+    \node[gray] at (0, 0.5) {20 patches $\times$ 4 têtes $\times$ 16 dims};
+    
+    % Flèche
+    \draw[->, thick] (0, 0.1) -- (0, -0.7) node[midway, right] {\texttt{.transpose(1, 2)}};
+    
+    % Étape 3: Transpose
+    \draw[thick, fill=green!10] (-3, -2) rectangle (3, -1);
+    \node at (0, -1.5) {\texttt{(batch, 4, 20, 16)}};
+    \node[gray] at (0, -2.5) {4 têtes $\times$ 20 patches $\times$ 16 dims};
+    
+    % Explication
+    \node[align=left, font=\small] at (8, 2) {
+        \textbf{Pourquoi ?}\\[0.3em]
+        La dimension ``têtes'' doit\\
+        être \emph{avant} la séquence\\
+        pour que \texttt{torch.matmul}\\
+        fasse l'attention en\\
+        parallèle sur les 4 têtes.\\[0.3em]
+        \textbf{C'est du batched matmul !}
+    };
+    
+\end{tikzpicture}
+\end{center}
+\end{frame}
+
+% ═══════════════════════════════════════════════════════════
+% PARTIE 5 : SELF-ATTENTION, CROSS-ATTENTION, MASQUAGE
+% ═══════════════════════════════════════════════════════════
+\section{Variantes : Self, Cross, et Masquage}
+
+\begin{frame}{Trois usages de l'attention dans le Transformer}
+\begin{columns}
+\begin{column}{0.32\textwidth}
+    \begin{block}{\centering Self-Attention\\(Encoder)}
+    \centering
+    $Q = K = V = X$
+    
+    \vspace{0.3em}
+    \footnotesize
+    Chaque position regarde \textbf{toutes} les positions.
+    
+    \vspace{0.3em}
+    \textit{C'est ce qu'utilise notre} \texttt{toy\_seq2seq} !
+    \end{block}
+\end{column}
+\begin{column}{0.32\textwidth}
+    \begin{block}{\centering Masked Self-Attn\\(Decoder)}
+    \centering
+    $Q = K = V = Y$
+    
+    \vspace{0.3em}
+    \footnotesize
+    Position $i$ ne voit que les positions $\leq i$.
+    
+    \vspace{0.3em}
+    \textit{Masque causal (triangulaire supérieur $\rightarrow -\infty$).}
+    \end{block}
+\end{column}
+\begin{column}{0.32\textwidth}
+    \begin{block}{\centering Cross-Attention\\(Decoder)}
+    \centering
+    $Q = Y$, $K = V = \text{enc}$
+    
+    \vspace{0.3em}
+    \footnotesize
+    Le decoder \textbf{interroge} l'encoder.
+    
+    \vspace{0.3em}
+    \textit{Les keys/values viennent de la source.}
+    \end{block}
+\end{column}
+\end{columns}
+
+\vspace{0.8em}
+
+\begin{center}
+\begin{tikzpicture}[every node/.style={font=\scriptsize}]
+    % Masque causal
+    \foreach \i in {0,...,4} {
+        \foreach \j in {0,...,4} {
+            \pgfmathsetmacro{\ok}{\j <= \i ? 1 : 0}
+            \ifnum\ok=1
+                \fill[green!30] (\j*0.5, -\i*0.5) rectangle (\j*0.5+0.5, -\i*0.5+0.5);
+            \else
+                \fill[red!30] (\j*0.5, -\i*0.5) rectangle (\j*0.5+0.5, -\i*0.5+0.5);
+                \node at (\j*0.5+0.25, -\i*0.5+0.25) {$-\infty$};
+            \fi
+        }
+    }
+    \draw[thick] (0, -2) rectangle (2.5, 0.5);
+    \node[below] at (1.25, -2.3) {Masque causal du decoder};
+    
+    \node at (4, -0.75) {\footnotesize Vert = visible};
+    \node at (4, -1.25) {\footnotesize Rouge = masqué};
+\end{tikzpicture}
+\end{center}
+\end{frame}
+
+% ═══════════════════════════════════════════════════════════
+% PARTIE 6 : LIEN AVEC NOTRE PROJET
+% ═══════════════════════════════════════════════════════════
+\section{Application : notre toy\_seq2seq}
+
+\begin{frame}[fragile]{Dans notre modèle : \texttt{SimpleSignalTransformer}}
+\begin{lstlisting}[style=python, title={\texttt{src/examples/toy\_seq2seq.py} --- Le modèle utilise l'attention}]
+# L'encoder utilise nn.TransformerEncoderLayer qui contient:
+#   - MultiHeadAttention (self-attention entre patches)
+#   - FeedForward
+#   - LayerNorm + Residual connections
+
+encoder_layer = nn.TransformerEncoderLayer(
+    d_model=64,          # dimension des embeddings
+    nhead=4,             # 4 tetes d'attention
+    dim_feedforward=256, # FFN interne
+    dropout=0.1,
+    batch_first=True
+)
+self.encoder = nn.TransformerEncoder(
+    encoder_layer, num_layers=3  # 3 couches empilees
+)
+\end{lstlisting}
+
+\vspace{0.3em}
+\textbf{Chaîne complète :} \\
+Signal $\xrightarrow{\text{patches}}$ $X \in \mathbb{R}^{20 \times 64}$ $\xrightarrow{\text{self-attention}}$ $\xrightarrow{\text{FFN}}$ $\xrightarrow{\times 3 \text{ couches}}$ Sortie
+\end{frame}
+
+\begin{frame}{Ce que les têtes apprennent dans notre tâche}
+\begin{columns}
+\begin{column}{0.48\textwidth}
+    \textbf{Objectif du modèle :}
+    \begin{itemize}
+        \item Identifier le \emph{type} de chaque pic
+        \item Calculer la \emph{moyenne} des hauteurs par type
+        \item Remplacer chaque pic par cette moyenne
+    \end{itemize}
+    
+    \vspace{0.5em}
+    \textbf{Ce que l'attention permet :}
+    \begin{itemize}
+        \item Tête A : ``trouver les autres triangles''
+        \item Tête B : ``trouver les autres carrés''
+        \item La somme pondérée des values $\approx$ \textbf{moyenne}
+    \end{itemize}
+    
+    \vspace{0.5em}
+    \alert{Résultat :} 98.2\% de réduction de la loss !
+\end{column}
+\begin{column}{0.48\textwidth}
+    \centering
+    \begin{tikzpicture}[scale=0.55, every node/.style={font=\tiny}]
+        % Input signal
+        \node[font=\small\bfseries] at (3.5, 6.2) {Signal d'entrée};
+        \draw[thick, blue] (0,5) -- (1,5) -- (1.3,5.8) -- (1.5,6) -- (1.7,5.8) -- (2,5) -- (3,5) -- (3.2,5.5) -- (3.5,5.5) -- (3.7,5) -- (4.5,5) -- (4.7,5.3) -- (4.9,5.5) -- (5.1,5.3) -- (5.3,5) -- (6,5) -- (6.2,5.8) -- (6.5,5.8) -- (6.7,5) -- (7,5);
+        
+        % Annotations
+        \node[above, red] at (1.5, 6) {$\triangle$ h=10};
+        \node[above, green!50!black] at (3.4, 5.5) {$\square$ h=5};
+        \node[above, red] at (5, 5.5) {$\triangle$ h=6};
+        \node[above, green!50!black] at (6.4, 5.8) {$\square$ h=8};
+        
+        % Attention arrows
+        \draw[->, thick, red, dashed] (1.5, 4.8) to[bend right=30] (5, 4.8);
+        \node[red, below] at (3.2, 4.3) {tête: ``même type''};
+        
+        \draw[->, thick, green!50!black, dashed] (3.4, 4.5) to[bend right=20] (6.4, 4.5);
+        \node[green!50!black, below] at (4.9, 3.8) {tête: ``même type''};
+        
+        % Output
+        \node[font=\small\bfseries] at (3.5, 2.8) {Sortie attendue};
+        \draw[thick, orange] (0,1.5) -- (1,1.5) -- (1.3,2) -- (1.5,2.2) -- (1.7,2) -- (2,1.5) -- (3,1.5) -- (3.2,2.15) -- (3.5,2.15) -- (3.7,1.5) -- (4.5,1.5) -- (4.7,1.8) -- (4.9,2.2) -- (5.1,1.8) -- (5.3,1.5) -- (6,1.5) -- (6.2,2.15) -- (6.5,2.15) -- (6.7,1.5) -- (7,1.5);
+        
+        \node[above, red] at (1.5, 2.2) {avg=8};
+        \node[above, green!50!black] at (3.4, 2.15) {avg=6.5};
+        \node[above, red] at (5, 2.2) {avg=8};
+        \node[above, green!50!black] at (6.4, 2.15) {avg=6.5};
+    \end{tikzpicture}
+\end{column}
+\end{columns}
+\end{frame}
+
+% ═══════════════════════════════════════════════════════════
+% PARTIE 7 : SYNTHÈSE
+% ═══════════════════════════════════════════════════════════
+\section{Synthèse et points clés}
+
+\begin{frame}{Récapitulatif : ce qu'il faut retenir}
+\begin{enumerate}
+    \item \textbf{Attention = recherche d'information}
+    \begin{itemize}
+        \item Query interroge, Key répond, Value fournit le contenu
+        \item Formule : $\text{softmax}(QK^\top / \sqrt{d_k}) \, V$
+    \end{itemize}
+    
+    \vspace{0.3em}
+    \item \textbf{Le scaling $\sqrt{d_k}$ est essentiel}
+    \begin{itemize}
+        \item Empêche la saturation du softmax
+        \item Sans lui : gradients $\approx 0$, pas d'apprentissage
+    \end{itemize}
+    
+    \vspace{0.3em}
+    \item \textbf{Multi-Head = plusieurs perspectives}
+    \begin{itemize}
+        \item Coût identique grâce au split $d_k = d_{\text{model}} / h$
+        \item Chaque tête capture un type de relation différent
+    \end{itemize}
+    
+    \vspace{0.3em}
+    \item \textbf{3 variantes} : self-attention, masked self-attention, cross-attention
+    
+    \vspace{0.3em}
+    \item \textbf{Le reshape est l'astuce clé} de l'implémentation
+    \begin{itemize}
+        \item Pas $h$ boucles $\rightarrow$ un seul \texttt{matmul} batché
+    \end{itemize}
+\end{enumerate}
+\end{frame}
+
+\begin{frame}{Complexité et limites}
+\begin{columns}
+\begin{column}{0.55\textwidth}
+    \textbf{Complexité} (Turner, §3 ; Fleuret) :
+    \[
+    \mathcal{O}(n^2 \cdot d)
+    \]
+    \begin{itemize}
+        \item $n$ = nombre de tokens (patches)
+        \item $d$ = dimension du modèle
+        \item \textbf{Quadratique} en la longueur de séquence !
+    \end{itemize}
+    
+    \vspace{0.5em}
+    \textbf{C'est pourquoi le patching aide :}
+    \begin{itemize}
+        \item Sans : $n = 100 \Rightarrow 100^2 = 10\,000$
+        \item Avec : $n = 20 \Rightarrow 20^2 = 400$
+        \item $\rightarrow$ 25$\times$ moins de calcul !
+    \end{itemize}
+\end{column}
+\begin{column}{0.42\textwidth}
+    \textbf{Pistes modernes :}
+    \begin{itemize}
+        \item \emph{Linear attention} : $\mathcal{O}(n \cdot d^2)$
+        \item \emph{Flash Attention} : optimise la mémoire
+        \item \emph{Sparse attention} : ne regarde qu'un sous-ensemble
+    \end{itemize}
+    
+    \vspace{0.5em}
+    \textcolor{gray}{(Mentionné dans Turner, §5)}
+\end{column}
+\end{columns}
+\end{frame}
+
+% ═══════════════════════════════════════════════════════════
+% SLIDE FINALE
+% ═══════════════════════════════════════════════════════════
+
+\begin{frame}{Références}
+\footnotesize
+\begin{thebibliography}{9}
+    \bibitem{turner2024} Turner, R. E. (2024). \emph{An Introduction to Transformers}. arXiv:2304.10557v5.
+    \bibitem{vaswani2017} Vaswani, A. et al. (2017). \emph{Attention Is All You Need}. NeurIPS.
+    \bibitem{alammar2018} Alammar, J. (2018). \emph{The Illustrated Transformer}. \url{https://jalammar.github.io/illustrated-transformer/}
+    \bibitem{rush2018} Rush, A. et al. (2018). \emph{The Annotated Transformer}. \url{https://nlp.seas.harvard.edu/2018/04/03/attention.html}
+    \bibitem{fleuret2022} Fleuret, F. (2022). \emph{Transformers --- Slides}. \url{https://fleuret.org/public/EN_20220809-Transformers/}
+\end{thebibliography}
+
+\vspace{1em}
+
+\centering
+\textbf{Code source :} \texttt{src/transformers/attention.py}\\
+\textbf{Exemple :} \texttt{python -m src.examples.toy\_seq2seq}
+\end{frame}
+
+\end{document}

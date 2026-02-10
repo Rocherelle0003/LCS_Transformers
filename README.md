@@ -2,41 +2,41 @@
 
 Master 1 LCS (Lecture et Communication Scientifique). Ce projet accompagne l'étude approfondie de l'article "An Introduction to Transformers" de Richard E. Turner.
 
-## 📚 Description
+##  Description
 
-Ce repository contient des implémentations éducatives et des exemples avancés des concepts clés de l'architecture Transformer. Le code est conçu pour faciliter la compréhension profonde des mécanismes sous-jacents, avec des commentaires détaillés et des visualisations.
+Ce repository contient des implémentations éducatives des concepts clés de l'architecture Transformer. Le code est conçu pour faciliter la compréhension profonde des mécanismes sous-jacents, avec des commentaires détaillés et des visualisations.
 
-## 🏗️ Structure du Projet
+##  Structure du Projet
 
 ```
 LCS_Transformers/
 ├── src/
-│   ├── transformers/           # Composants du Transformer
-│   │   ├── attention.py        # Scaled Dot-Product & Multi-Head Attention
-│   │   ├── positional_encoding.py  # Encodage positionnel
-│   │   ├── feed_forward.py     # Réseau Feed-Forward
-│   │   ├── encoder.py          # Encoder Transformer
-│   │   ├── decoder.py          # Decoder Transformer
-│   │   └── transformer.py      # Modèle complet
+│   ├── transformers/               # Composants du Transformer
+│   │   ├── attention.py            # Scaled Dot-Product & Multi-Head Attention
+│   │   ├── positional_encoding.py  # Encodage positionnel (sinusoïdal + appris)
+│   │   ├── feed_forward.py         # Réseau Feed-Forward
+│   │   ├── encoder.py              # Encoder Transformer
+│   │   ├── decoder.py              # Decoder Transformer
+│   │   └── transformer.py          # Modèle complet Encoder-Decoder
 │   │
-│   └── examples/               # Exemples éducatifs
-│       ├── example1_attention.py     # Attention en profondeur
-│       ├── example2_multihead.py     # Multi-Head Attention
-│       ├── example3_architecture.py  # Architecture complète
-│       ├── example4_translation.py   # Traduction seq2seq
-│       ├── example5_variants.py      # Variantes modernes
-│       ├── example6_illustrated_attention.py  # The Illustrated Transformer
-│       ├── example7_annotated_transformer.py  # The Annotated Transformer
-│       └── example8_advanced_concepts.py      # Concepts avancés (Fleuret)
+│   └── examples/                   # Exemples éducatifs
+│       └── toy_seq2seq.py          # Tâche de transformation de signaux
 │
-├── tests/                      # Tests unitaires
-│   └── test_transformers.py
+├── docs/                           # Documentation pédagogique
+│   ├── training_explained.py       # Explication ligne par ligne de l'entraînement
+│   └── visualize_learning.py       # Visualisation de l'apprentissage
 │
-├── requirements.txt            # Dépendances Python
+├── notebooks/                      # Notebooks Jupyter interactifs
+│   └── toy_seq2seq.ipynb           # Exploration interactive du Toy Seq2Seq
+│
+├── tests/                          # Tests unitaires
+│   └── test_toy_seq2seq.py
+│
+├── requirements.txt                # Dépendances Python
 └── README.md
 ```
 
-## 🚀 Installation
+##  Installation
 
 ```bash
 # Cloner le repository
@@ -47,130 +47,75 @@ cd LCS_Transformers
 pip install -r requirements.txt
 ```
 
-## 📖 Exemples Éducatifs
+##  Exemple : Toy Seq2Seq (Transformation de Signaux)
 
-### Exemple 1: Attention Fondamentale
+### Exécuter l'exemple principal
 ```bash
-python -m src.examples.example1_attention
+python -m src.examples.toy_seq2seq
 ```
-Explore le mécanisme d'attention scaled dot-product :
-- Calcul des scores d'attention
-- Importance du facteur d'échelle √d_k
-- Masquage causal pour les modèles autoregressifs
 
-### Exemple 2: Multi-Head Attention
+**Tâche** : Transformer des signaux avec pics de hauteurs variées en signaux avec pics moyennés par type.
+- **Input** : Signal avec pics triangulaires (▲) et carrés (■) de différentes hauteurs
+- **Output** : Signal où tous les triangles ont la même hauteur (moyenne) et tous les carrés aussi
+
+### Documentation pédagogique
 ```bash
-python -m src.examples.example2_multihead
-```
-Comprendre l'attention multi-têtes :
-- Pourquoi plusieurs têtes ?
-- Spécialisation des têtes
-- Visualisation des patterns d'attention
+# Explication détaillée de l'entraînement (ligne par ligne)
+python -m docs.training_explained
 
-### Exemple 3: Architecture Complète
-```bash
-python -m src.examples.example3_architecture
+# Visualisation de l'apprentissage
+python -m docs.visualize_learning
 ```
-L'architecture Transformer en détail :
-- Structure Encoder-Decoder
-- Connexions résiduelles et normalisation
-- Encodage positionnel sinusoïdal
 
-### Exemple 4: Traduction Seq2Seq
-```bash
-python -m src.examples.example4_translation
-```
-Exemple pratique de traduction nombre→mots :
-- Préparation des données
-- Boucle d'entraînement
-- Décodage autoregressif
+### Notebook interactif
+Ouvrir `notebooks/toy_seq2seq.ipynb` dans VS Code ou Jupyter.
 
-### Exemple 5: Variantes Modernes
-```bash
-python -m src.examples.example5_variants
-```
-Explorer les variantes du Transformer :
-- Encoder-only (BERT-style)
-- Decoder-only (GPT-style)
-- Mécanismes d'attention efficaces
-- Innovations architecturales modernes
-
-### Exemple 6: The Illustrated Transformer (Visual Deep Dive)
-```bash
-python -m src.examples.example6_illustrated_attention
-```
-Visualisations inspirées de Jay Alammar :
-- Analogie Query-Key-Value (bibliothèque)
-- Self-attention sur des phrases réelles
-- Patterns d'encodage positionnel (ondes sinusoïdales)
-- Pipeline complet de l'encoder
-- Spécialisation des têtes d'attention
-
-### Exemple 7: The Annotated Transformer (Détails Mathématiques)
-```bash
-python -m src.examples.example7_annotated_transformer
-```
-Implémentation détaillée style Harvard NLP :
-- Équations mathématiques complètes
-- Noam Learning Rate Scheduler
-- Label Smoothing avec visualisations
-- Copy Task (test de sanité)
-- Classification de 12 formes géométriques (triangles, parallélogrammes, losanges, trapèzes, pentagones, hexagones, etc.)
-
-### Exemple 8: Concepts Avancés (François Fleuret)
-```bash
-python -m src.examples.example8_advanced_concepts
-```
-Concepts théoriques approfondis :
-- Attention comme dictionnaire soft (recherche différentiable)
-- Analyse de complexité O(n²) avec visualisations
-- Biais inductifs des Transformers
-- Modélisation de séquences de polygones (16 types : étoiles, polygones réguliers/irréguliers)
-- Patterns d'attention hypothétiques pour données géométriques
-
-## 🧪 Tests
+##  Tests
 
 ```bash
 # Exécuter tous les tests
 pytest tests/ -v
 
 # Exécuter un test spécifique
-pytest tests/test_transformers.py::TestScaledDotProductAttention -v
+pytest tests/test_toy_seq2seq.py -v
 ```
 
-## 📊 Concepts Clés Implémentés
+##  Concepts Clés Implémentés
 
-### 1. Scaled Dot-Product Attention
+### Scaled Dot-Product Attention
 ```
 Attention(Q, K, V) = softmax(QK^T / √d_k) V
 ```
 
-### 2. Multi-Head Attention
+### Multi-Head Attention
 ```
 MultiHead(Q, K, V) = Concat(head_1, ..., head_h) W^O
 où head_i = Attention(QW_i^Q, KW_i^K, VW_i^V)
 ```
 
-### 3. Encodage Positionnel
+### Encodage Positionnel
 ```
 PE(pos, 2i) = sin(pos / 10000^(2i/d_model))
 PE(pos, 2i+1) = cos(pos / 10000^(2i/d_model))
 ```
 
-### 4. Feed-Forward Network
+### Feed-Forward Network
 ```
 FFN(x) = max(0, xW_1 + b_1)W_2 + b_2
 ```
 
-## 📝 Référence
+### Patching (dans Toy Seq2Seq)
+Le signal est découpé en patches pour réduire la complexité :
+- 100 points → 20 patches de 5 → Attention O(20²) au lieu de O(100²)
+
+##  Références
 
 - Turner, R. E. (2024). "An Introduction to Transformers"
 - Vaswani, A., et al. (2017). "Attention Is All You Need"
-- Alammar, J. (2018). "The Illustrated Transformer" - https://jalammar.github.io/illustrated-transformer/
-- Rush, A. et al. (2018). "The Annotated Transformer" - https://nlp.seas.harvard.edu/2018/04/03/attention.html
-- Fleuret, F. (2022). "Transformers" - https://fleuret.org/public/EN_20220809-Transformers/
+- Alammar, J. (2018). "The Illustrated Transformer"
+- Rush, A. et al. (2018). "The Annotated Transformer"
 
-## 📄 Licence
+##  Licence
 
-GNU Affero General Public License v3.0
+Moi
 
