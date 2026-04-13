@@ -378,14 +378,14 @@ Cette tâche reproduit l'image "Toy seq2seq example":
         num_samples=2000, 
         seq_len=100, 
         peak_width=8,      # Pics larges et nets
-        noise_std=0.2,     # Très peu de bruit
+        noise_std=0.6,     # bruit
         seed=42
     )
     val_dataset = SignalDataset(
         num_samples=200, 
         seq_len=100, 
         peak_width=8,
-        noise_std=0.2,
+        noise_std=0.6,
         seed=123
     )
     

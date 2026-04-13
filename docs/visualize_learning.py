@@ -221,7 +221,7 @@ def visualize_before_after(model_before, model_after, dataset, device, save_path
     
     if save_path:
         plt.savefig(save_path, dpi=150, bbox_inches='tight')
-        print(f"✅ Sauvegardé: {save_path}")
+        print(f" Sauvegardé: {save_path}")
     plt.close()
 
 
@@ -234,14 +234,14 @@ def main():
     
     # Setup
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    print(f"\n📱 Device: {device}")
+    print(f"\n Device: {device}")
     
     # Dossier de sortie
     output_dir = Path(__file__).parent.parent / 'src' / 'tmp'
     output_dir.mkdir(exist_ok=True)
     
     # Dataset
-    print("\n📚 Création des datasets...")
+    print("\n Création des datasets...")
     train_dataset = SignalDataset(num_samples=1000, seq_len=100, seed=42)
     val_dataset = SignalDataset(num_samples=100, seq_len=100, seed=123)
     test_dataset = SignalDataset(num_samples=20, seq_len=100, seed=456)
@@ -254,7 +254,7 @@ def main():
     print(f"   Test: {len(test_dataset)} échantillons")
     
     # Modèle
-    print("\n🧠 Création du modèle...")
+    print("\n Création du modèle...")
     model = SimpleSignalTransformer(
         seq_len=100, d_model=64, num_heads=4, d_ff=256, num_layers=3, patch_size=5
     ).to(device)
@@ -274,7 +274,7 @@ def main():
     print("ENTRAÎNEMENT AVEC VISUALISATION")
     print("="*70)
     
-    num_epochs = 50
+    num_epochs = 30
     epoch_data = []
     
     for epoch in range(1, num_epochs + 1):
@@ -297,7 +297,7 @@ def main():
         })
         
         # Affichage
-        if epoch % 5 == 0 or epoch == (1):
+        if epoch % 5 == 0 or epoch == 1:
             print(f"  Epoch {epoch:2d}/{num_epochs}: "
                   f"train={train_loss:.4f}, val={val_loss:.4f}, test_mse={avg_mse:.4f}")
             
